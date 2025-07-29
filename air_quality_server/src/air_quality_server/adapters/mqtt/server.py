@@ -3,7 +3,7 @@ import logging
 
 from air_quality_core.application import ingest_reading
 from air_quality_core.config.settings import settings
-from air_quality_core.domain import Reading
+from air_quality_core.domain.models import Reading
 from paho.mqtt import client as mqtt
 
 from air_quality_server.adapters.db.uow import SqlAlchemyUoW

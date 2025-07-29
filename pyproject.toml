@@ -20,6 +20,7 @@ pre-commit = "^4.2.0"
 types-requests = "^2.32.4.20250611"
 types-pyserial = "^3.5.0.20250326"
 sqlalchemy2-stubs = "^0.0.2a38"
+plotext = "^5.3.2"
 
 [tool.mypy]
 plugins = ["sqlalchemy.ext.mypy.plugin"]
@@ -29,3 +30,6 @@ follow_imports = "normal"
 [[tool.mypy.overrides]]
 module = "plotext.*"
 ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+python_files = ["test_*.py"]

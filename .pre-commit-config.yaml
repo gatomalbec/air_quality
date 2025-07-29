@@ -1,9 +1,9 @@
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.4.4                       # pin to the same version you install
+    rev: v0.4.4
     hooks:
-      - id: ruff-format               # Black‑style reformatter
-      - id: ruff                      # linter; we auto‑fix only import order
+      - id: ruff-format
+      - id: ruff
         args: [--fix, --select=I]
 
   - repo: local
@@ -11,5 +11,6 @@ repos:
       - id: pytest
         name: pytest
         entry: poetry run pytest -q
-        language: system             # uses system shell; venv already active
-        stages: [push]               # run only on git push
+        language: system
+        pass_filenames: false
+        stages: [pre-push]

@@ -18,9 +18,8 @@ pydantic-settings = "^2.2"
 psycopg2-binary   = "^2.9"
 
 [tool.poetry.scripts]
-air-quality-api   = "air_quality_server.cli:run_api"
-air-quality-mqtt  = "air_quality_server.cli:run_mqtt"
-alembic-upgrade   = "air_quality_server.cli:alembic_upgrade"
+air-quality-api   = "air_quality_server.scripts:run_api"
+air-quality-mqtt  = "air_quality_server.scripts:run_mqtt"
 
 [build-system]
 requires      = ["poetry-core>=1.0.0"]
