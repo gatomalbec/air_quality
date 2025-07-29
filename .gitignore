@@ -1,0 +1,35 @@
+# ───────── Python / Poetry ─────────
+# Virtual environments
+.venv/
+env/
+# Byte‑compiled and interpreter artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+# Packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+# Test and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+# Static analysis caches
+.mypy_cache/
+.ruff_cache/
+.pyre/
+# Local tooling
+.python-version
+
+# ───────── FastAPI / Alembic ─────────
+alembic/versions/*.pyc
+*.log
+*.db           # e.g., local SQLite buffers
+
+# ───────── Node / React ─────────
+# Dependencies
+node_modules/
+# Production build output
+frontend/build/
+# Vite / Webpack cach

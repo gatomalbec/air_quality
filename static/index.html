@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Air Quality Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <h1>PM Levels – Room: test</h1>
+  <canvas id="pmChart" width="800" height="400"></canvas>
+
+<script>
+  let chartInstance = null;
+
+  async function fetchData() {
+    const res = await fetch("/history/test");
+    const data = await res.json();
+
+    if (!Array.isArray(data) || data.length === 0) {
+      console.warn("No data received");
+      return null;
+    }
+
+    return {
+      labels: data.map(r => new Date(r.ts * 1000).toLocaleTimeString()),
+      datasets: [
+        {
+          label: "PM1.0",
+          data: data.map(r => r.pm1),
+          borderColor: "rgba(255, 99, 132, 1)",
+          backgroundColor: "rgba(255, 99, 132, 0.2)",
+          tension: 0.1,
+          fill: false
+        },
+        {
+          label: "PM2.5",
+          data: data.map(r => r.pm25),
+          borderColor: "rgba(54, 162, 235, 1)",
+          backgroundColor: "rgba(54, 162, 235, 0.2)",
+          tension: 0.1,
+          fill: false
+        },
+        {
+          label: "PM10",
+          data: data.map(r => r.pm10),
+          borderColor: "rgba(255, 206, 86, 1)",
+          backgroundColor: "rgba(255, 206, 86, 0.2)",
+          tension: 0.1,
+          fill: false
+        }
+      ]
+    };
+  }
+
+  async function renderChart() {
+    const chartData = await fetchData();
+    if (!chartData) return;
+
+    const ctx = document.getElementById("pmChart").getContext("2d");
+
+    if (chartInstance) {
+      chartInstance.data = chartData;
+      chartInstance.update();
+    } else {
+      chartInstance = new Chart(ctx, {
+        type: "line",
+        data: chartData,
+        options: {
+          responsive: true,
+          animation: false,
+          scales: {
+            x: {
+              title: { display: true, text: "Time" }
+            },
+            y: {
+              title: { display: true, text: "µg/m³" },
+              beginAtZero: true
+            }
+          }
+        }
+      });
+    }
+  }
+
+  renderChart();
+  setInterval(renderChart, 10000);  // refresh every 10 seconds
+</script>
+
+</body>
+</html>

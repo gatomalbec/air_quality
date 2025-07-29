@@ -1,0 +1,19 @@
+[tool.poetry]
+name        = "air_quality_sensor"
+version     = "0.1.0"
+description = "MQTT producer for Raspberry Pi"
+authors     = ["Jacob <jacob.shotwell@gmail.com>"]
+
+[tool.poetry.dependencies]
+python            = ">=3.12,<3.13"
+air_quality_core  = { path = "../air_quality_core", develop = true }
+paho-mqtt         = "^2.0"
+pyserial          = "^3.5"
+pydantic-settings = "^2.2"
+
+[tool.poetry.scripts]
+air-quality-producer = "air_quality_sensor.cli:main"
+
+[build-system]
+requires      = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

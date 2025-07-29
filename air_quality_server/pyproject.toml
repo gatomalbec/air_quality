@@ -1,0 +1,37 @@
+# air_quality_server/pyproject.toml
+[tool.poetry]
+name        = "air_quality_server"
+version     = "0.1.0"
+description = "FastAPI API, database, MQTT receiver"
+authors     = ["Jacob <jacob.shotwell@gmail.com>"]
+
+[tool.poetry.dependencies]
+python            = ">=3.12,<3.13"
+air_quality_core  = { path = "../air_quality_core", develop = true }
+fastapi           = "^0.111"
+uvicorn           = { extras = ["standard"], version = "^0.29" }
+sqlalchemy        = "^2.0"
+asyncpg           = "^0.29"
+alembic           = "^1.13"
+paho-mqtt         = "^2.0"
+pydantic-settings = "^2.2"
+psycopg2-binary   = "^2.9"
+
+[tool.poetry.scripts]
+air-quality-api   = "air_quality_server.cli:run_api"
+air-quality-mqtt  = "air_quality_server.cli:run_mqtt"
+alembic-upgrade   = "air_quality_server.cli:alembic_upgrade"
+
+[build-system]
+requires      = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+# unify style across the workspace
+target-version = "py312"          # adjust if needed
+line-length    = 100
+extend-include = ["*.ipynb"]      # optional: format notebooks too
+
+# enable the import‑sorting fixer (isort replacement) and core checks
+lint.select   = ["E", "F", "I"]   # E=pycodestyle, F=pyflakes, I=import‑order
+lint.fixable  = ["I"]             # allow Ruff to rewrite imports
