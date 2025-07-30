@@ -19,7 +19,6 @@ mypy = "^1.17.0"
 pre-commit = "^4.2.0"
 types-requests = "^2.32.4.20250611"
 types-pyserial = "^3.5.0.20250326"
-sqlalchemy2-stubs = "^0.0.2a38"
 plotext = "^5.3.2"
 
 [tool.mypy]

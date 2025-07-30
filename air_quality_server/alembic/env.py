@@ -37,7 +37,8 @@ from air_quality_server.adapters.db.sqlalchemy_models import (
 # 3 – Alembic configuration
 # ---------------------------------------------------------------------------
 config = context.config
-fileConfig(config.config_file_name)  # pulls in logging
+if config.config_file_name is not None:
+    fileConfig(config.config_file_name)  # pulls in logging
 target_metadata = Base.metadata  # for ‑‑autogenerate
 
 

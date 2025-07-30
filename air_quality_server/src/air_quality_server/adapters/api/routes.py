@@ -60,10 +60,10 @@ def add_mapping(
 
 @router.post("/ingest")
 def ingest_reading_endpoint(
-    reading: ReadingIn,
+    reading_in: ReadingIn,
     uow: SqlAlchemyUoW = Depends(get_uow),
 ):
-    reading = Reading(**reading.dict())
+    reading = Reading(**reading_in.dict())
     with uow:
         ingest_reading(reading, uow)
     return {"status": "ok"}

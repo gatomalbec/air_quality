@@ -78,7 +78,7 @@ def main() -> None:
         if not readings:
             continue
         xs = [(r["ts"] - start_ts) / 60 for r in readings]  # minutes
-        ys = [r[args.metric] for r in readings]  # type: ignore[index]
+        ys = [r[args.metric] for r in readings]  # type: ignore[index,literal-required]
         plt.plot(xs, ys, label=room)
 
     pos, labels = xticks(start, span_min)

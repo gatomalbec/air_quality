@@ -43,7 +43,6 @@ class PostgresReadingRepository(ReadingRepository):
         stmt = stmt.order_by(ReadingORM.ts.asc())
         return [self._to_domain(r) for r in self.session.scalars(stmt).all()]
 
-    # WRITE side
     def insert(self, reading: Reading) -> None:
         row = ReadingORM()  # no keyword args
         row.ts = reading.ts
