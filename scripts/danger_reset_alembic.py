@@ -1,6 +1,7 @@
 # dangerous!
-from air_quality_core.config.settings import settings
 from sqlalchemy import create_engine, text
+
+from air_quality_core.config.settings import settings
 
 engine = create_engine(settings.DATABASE_URL)
 

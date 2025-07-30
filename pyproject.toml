@@ -1,15 +1,23 @@
 [tool.poetry]
-package-mode = false
+package-mode = true
 name        = "air_quality_workspace"
 version     = "0.0.0"
 description = "Monorepo for server, sensor, and shared core"
 authors     = ["Jacob <jacob.shotwell@gmail.com>"]
+packages    = [{include = "scripts"}]
 
 [tool.poetry.dependencies]
 python = ">=3.12,<3.13"
 air_quality_core    = { path = "air_quality_core", develop = true }
 air_quality_server  = { path = "air_quality_server", develop = true }
 air_quality_sensor  = { path = "air_quality_sensor", develop = true }
+
+[tool.poetry.scripts]
+air-quality-api   = "scripts.run_api:main"
+air-quality-producer = "scripts.producer:main"
+air-quality-plot = "scripts.plot_readings:main"
+air-quality-generate-data = "scripts.generate_fake_data:main"
+air-quality-wipe-db = "scripts.danger_wipe_database:main"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0"
@@ -20,15 +28,29 @@ pre-commit = "^4.2.0"
 types-requests = "^2.32.4.20250611"
 types-pyserial = "^3.5.0.20250326"
 plotext = "^5.3.2"
+requests = "^2.31"
+pyserial = "^3.5"
 
 [tool.mypy]
 plugins = ["sqlalchemy.ext.mypy.plugin"]
 mypy_path = "stubs"
 follow_imports = "normal"
+ignore_missing_imports = true
+exclude = ["stubs/"]
 
 [[tool.mypy.overrides]]
 module = "plotext.*"
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+module = "stubs.*"
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 python_files = ["test_*.py"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+lint.select = ["E", "F", "I"]
+lint.fixable = ["E", "F", "I"]

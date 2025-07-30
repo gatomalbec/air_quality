@@ -1,10 +1,11 @@
 import uvicorn
+
 from air_quality_core.config.settings import settings
 
 
 def main():
     uvicorn.run(
-        "air_quality.adapters.api.main:app",
+        "air_quality_server.adapters.api.main:app",
         host=settings.API_HOST,
         port=settings.API_PORT,
         reload=True,

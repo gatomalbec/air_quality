@@ -16,10 +16,11 @@ alembic           = "^1.13"
 paho-mqtt         = "^2.0"
 pydantic-settings = "^2.2"
 psycopg2-binary   = "^2.9"
+requests          = "^2.31"
+plotext           = "^5.3.2"
+pyserial          = "^3.5"
 
-[tool.poetry.scripts]
-air-quality-api   = "air_quality_server.scripts:run_api"
-air-quality-mqtt  = "air_quality_server.scripts:run_mqtt"
+
 
 [build-system]
 requires      = ["poetry-core>=1.0.0"]
@@ -33,4 +34,4 @@ extend-include = ["*.ipynb"]      # optional: format notebooks too
 
 # enable the import‑sorting fixer (isort replacement) and core checks
 lint.select   = ["E", "F", "I"]   # E=pycodestyle, F=pyflakes, I=import‑order
-lint.fixable  = ["I"]             # allow Ruff to rewrite imports
+lint.fixable  = ["E", "F", "I"]   # allow Ruff to fix all selected issues

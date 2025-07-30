@@ -21,6 +21,7 @@ from typing import Any
 
 import paho.mqtt.client as mqtt
 import serial
+
 from air_quality_core.config.settings import settings
 
 # -------------------------------------------------------------------- #
@@ -90,7 +91,13 @@ def flush(client: mqtt.Client) -> None:
 
     for row in rows:
         payload = json.dumps(
-            {"ts": row[1], "device_id": row[2], "pm1": row[3], "pm25": row[4], "pm10": row[5]}
+            {
+                "ts": row[1],
+                "device_id": row[2],
+                "pm1": row[3],
+                "pm25": row[4],
+                "pm10": row[5],
+            }
         )
         if client.publish(PUB_TOPIC, payload, qos=1).rc == mqtt.MQTT_ERR_SUCCESS:
             with sqlite3.connect(BUF_DB) as c:

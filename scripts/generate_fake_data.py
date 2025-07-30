@@ -8,8 +8,6 @@ poetry run python src/scripts/generate_fake_data.py \
     --device-id sensor-fake-001 --wipe
 """
 
-from __future__ import annotations
-
 import argparse
 import random
 from datetime import datetime, timedelta, timezone
@@ -80,10 +78,12 @@ def wipe_data(device_id: str) -> None:
 # ───────────────────────────── CLI ─────────────────────────────
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--device-id", default="sensor-fake-001")
+    parser.add_argument("--device-id", default="fake")
     parser.add_argument("--wipe", action="store_true")
     parser.add_argument(
-        "--start-now", action="store_true", help="start at current UTC time instead of now‑2h"
+        "--start-now",
+        action="store_true",
+        help="start at current UTC time instead of now‑2h",
     )
     args = parser.parse_args()
 

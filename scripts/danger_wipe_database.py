@@ -14,10 +14,11 @@ poetry run python src/scripts/danger_wipe_database.py --force
 import argparse
 import sys
 
-# project settings – adjust import path if yours differs
-from air_quality_core.config.settings import settings
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
+
+# project settings – adjust import path if yours differs
+from air_quality_core.config.settings import settings
 
 
 def drop_everything(url: str) -> None:
