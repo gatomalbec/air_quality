@@ -33,3 +33,4 @@ node_modules/
 # Production build output
 frontend/build/
 # Vite / Webpack cach
+.DS_Store
