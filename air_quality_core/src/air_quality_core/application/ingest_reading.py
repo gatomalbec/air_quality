@@ -1,7 +1,7 @@
 from air_quality_core.domain.models import Reading
-from air_quality_server.adapters.db.uow import SqlAlchemyUoW
+from air_quality_core.domain.ports import UnitOfWork
 
 
-def ingest_reading(reading: Reading, uow: SqlAlchemyUoW) -> None:
+def ingest_reading(reading: Reading, uow: UnitOfWork) -> None:
     with uow:
         uow.reading_repo().insert(reading)
