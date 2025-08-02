@@ -1,7 +1,6 @@
 import queue
 import threading
 import time
-from typing import Any
 from unittest.mock import Mock
 
 import pytest
@@ -15,9 +14,9 @@ class MockPayload(Serializable):
 
     def __init__(self, value: int):
         self.value = value
-
-    def to_dict(self) -> dict[str, Any]:
-        return {"value": self.value}
+        
+    def to_string(self) -> str:
+        return str(self.value)
 
 
 class TestBaseSensorThread:
@@ -26,7 +25,7 @@ class TestBaseSensorThread:
     def test_init(self):
         """Test that BaseSensorThread initializes correctly"""
         mock_driver = Mock()
-        out_q = queue.Queue()
+        out_q: queue.Queue = queue.Queue()
 
         thread = BaseSensorThread(
             name="test_thread",
@@ -47,7 +46,7 @@ class TestBaseSensorThread:
     def test_stop_sets_event(self):
         """Test that stop() sets the stop event"""
         mock_driver = Mock()
-        out_q = queue.Queue()
+        out_q: queue.Queue = queue.Queue()
 
         thread = BaseSensorThread(
             name="test_thread",
@@ -67,7 +66,7 @@ class TestBaseSensorThread:
         mock_driver = Mock()
         mock_driver.return_value = mock_payload
 
-        out_q = queue.Queue()
+        out_q: queue.Queue = queue.Queue()
 
         thread = BaseSensorThread(
             name="test_thread",
@@ -99,7 +98,7 @@ class TestBaseSensorThread:
         mock_driver = Mock()
         mock_driver.return_value = None  # Simulate failed reading
 
-        out_q = queue.Queue()
+        out_q: queue.Queue = queue.Queue()
 
         thread = BaseSensorThread(
             name="test_thread",
@@ -128,7 +127,7 @@ class TestBaseSensorThread:
         mock_driver.return_value = mock_payload
 
         # Create a full queue
-        out_q = queue.Queue(maxsize=1)
+        out_q: queue.Queue = queue.Queue(maxsize=1)
         out_q.put("existing_item")  # Fill the queue
 
         thread = BaseSensorThread(
@@ -160,7 +159,7 @@ class TestBaseSensorThread:
         mock_driver = Mock()
         mock_driver.return_value = mock_payload
 
-        out_q = queue.Queue()
+        out_q: queue.Queue = queue.Queue()
 
         thread = BaseSensorThread(
             name="test_thread",
@@ -186,7 +185,7 @@ class TestBaseSensorThread:
         mock_driver = Mock()
         mock_driver.return_value = MockPayload(42)
 
-        out_q = queue.Queue()
+        out_q: queue.Queue = queue.Queue()
 
         thread = BaseSensorThread(
             name="test_thread",
@@ -212,7 +211,7 @@ class TestBaseSensorThread:
         mock_driver = Mock()
         mock_driver.side_effect = Exception("Driver error")
 
-        out_q = queue.Queue()
+        out_q: queue.Queue = queue.Queue()
 
         thread = BaseSensorThread(
             name="test_thread",
@@ -237,7 +236,7 @@ class TestBaseSensorThread:
     def test_thread_is_daemon(self):
         """Test that thread is created as daemon"""
         mock_driver = Mock()
-        out_q = queue.Queue()
+        out_q: queue.Queue = queue.Queue()
 
         thread = BaseSensorThread(
             name="test_thread",
@@ -267,7 +266,7 @@ class TestBaseSensorThread:
             MockPayload(10),
         ]
 
-        out_q = queue.Queue()
+        out_q: queue.Queue = queue.Queue()
 
         thread = BaseSensorThread(
             name="test_thread",
@@ -303,7 +302,7 @@ class TestBaseSensorThread:
         mock_driver = Mock()
         mock_driver.return_value = MockPayload(42)
 
-        out_q = queue.Queue()
+        out_q: queue.Queue = queue.Queue()
 
         thread = BaseSensorThread(
             name="test_thread",
@@ -327,7 +326,7 @@ class TestBaseSensorThread:
         mock_driver = Mock()
         mock_driver.return_value = MockPayload(42)
 
-        out_q = queue.Queue()
+        out_q: queue.Queue = queue.Queue()
 
         thread = BaseSensorThread(
             name="test_thread",
@@ -363,7 +362,7 @@ class TestBaseSensorThread:
         mock_driver = Mock()
         mock_driver.return_value = MockPayload(42)
 
-        out_q = queue.Queue()
+        out_q: queue.Queue = queue.Queue()
 
         thread = BaseSensorThread(
             name="test_thread",

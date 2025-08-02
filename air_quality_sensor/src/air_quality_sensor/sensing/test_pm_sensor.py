@@ -1,13 +1,9 @@
 import time
 
 from factory import Factory, Faker
+from typing_extensions import Buffer
 
-from air_quality_sensor.sensing.pms5003 import (
-    PMS5003,
-    PMS5003Config,
-    PMS5003Protocol,
-    PMS5003Reading,
-)
+from air_quality_sensor.sensing.pms5003 import PMS5003, PMS5003Config, PMS5003Reading
 from air_quality_sensor.utils.mocks import BadChecksumFakePMS5003, FakePMS5003, TimeoutFakePMS5003
 
 
@@ -17,7 +13,6 @@ class PMS5003ReadingFactory(Factory):
     class Meta:
         model = PMS5003Reading
 
-    ts = Faker("unix_time")
     pm1_cf = Faker("random_int", min=0, max=100)
     pm25_cf = Faker("random_int", min=0, max=100)
     pm10_cf = Faker("random_int", min=0, max=100)
@@ -29,7 +24,6 @@ class PMS5003ReadingFactory(Factory):
 def test_pms5003_reading_creation():
     """Test that PMS5003Reading can be created with valid data."""
     reading = PMS5003Reading(
-        ts=1234567890.0,
         pm1_cf=10,
         pm25_cf=15,
         pm10_cf=20,
@@ -38,7 +32,6 @@ def test_pms5003_reading_creation():
         pm10_atm=25,
     )
 
-    assert reading.ts == 1234567890.0
     assert reading.pm1_cf == 10
     assert reading.pm25_cf == 15
     assert reading.pm10_cf == 20
@@ -63,21 +56,6 @@ def test_pms5003_config_custom_values():
     assert config.timeout_seconds == 2.5
 
 
-def test_pms5003_protocol_defaults():
-    """Test that PMS5003Protocol has correct default values."""
-    protocol = PMS5003Protocol()
-
-    assert protocol.header == b"\x42\x4d"
-    assert protocol.frame_length == 32
-    assert protocol.data_length == 26
-    assert protocol.checksum_length == 2
-    assert protocol.data_start_offset == 4
-    assert protocol.checksum_start_offset == 30
-    assert protocol.unpack_format == ">13H"
-    assert protocol.data_end_offset == 30
-    assert protocol.checksum_end_offset == 32
-
-
 def test_pms5003_initialization():
     """Test basic PMS5003 initialization."""
     mock = FakePMS5003()
@@ -98,16 +76,6 @@ def test_pms5003_initialization_with_custom_config():
 
     assert sensor.config.max_retries == 5
     assert sensor.config.timeout_seconds == 2.0
-
-
-def test_pms5003_initialization_with_custom_protocol():
-    """Test PMS5003 initialization with custom protocol configuration."""
-    mock = FakePMS5003()
-    protocol = PMS5003Protocol(frame_length=64, data_length=58)
-    sensor = PMS5003(mock, protocol=protocol)
-
-    assert sensor.protocol.frame_length == 64
-    assert sensor.protocol.data_length == 58
 
 
 def test_successful_reading():
@@ -178,13 +146,13 @@ def test_retry_logic_success_on_second_attempt():
             super().__init__(*args, **kwargs)
             self._sensor_read_count = 0
 
-        def write(self, data: bytes) -> int:
+        def write(self, data: Buffer) -> int:  # type: ignore[override]
             # Count sensor read attempts (REQ_FRAME commands)
             if data == self.protocol.req_frame_cmd:
                 self._sensor_read_count += 1
             return super().write(data)
 
-        def read(self, n: int = 1) -> bytes:
+        def read(self, n: int | None = -1) -> bytes:  # type: ignore[override]
             if self._sensor_read_count == 1:
                 # First sensor read attempt: return incomplete frame (timeout)
                 return b"incomplete"
@@ -264,9 +232,6 @@ def test_multiple_readings():
     assert reading2 is not None
     assert reading2.pm1_cf == 10
 
-    # Readings should be different timestamps
-    assert reading1.ts != reading2.ts
-
 
 def test_error_counters_increment():
     """Test that error counters increment properly on multiple failures."""
@@ -326,7 +291,6 @@ def test_pms5003_reading_factory_creates_valid_data():
     """Test that the factory creates valid PMS5003Reading instances."""
     reading = PMS5003ReadingFactory()
 
-    assert isinstance(reading.ts, float)
     assert isinstance(reading.pm1_cf, int)
     assert isinstance(reading.pm25_cf, int)
     assert isinstance(reading.pm10_cf, int)
