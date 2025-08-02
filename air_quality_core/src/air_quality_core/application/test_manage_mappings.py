@@ -16,6 +16,10 @@ class StubUoW:
     def device_mapping_repo(self):
         return self.map_repo
 
+    def reading_repo(self):
+        # This test doesn't use reading_repo, so return a dummy
+        return None
+
     def __enter__(self):
         return self
 

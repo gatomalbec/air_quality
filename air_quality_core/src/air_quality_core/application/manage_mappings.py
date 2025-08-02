@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from air_quality_server.adapters.db.uow import SqlAlchemyUoW
+from air_quality_core.domain.ports import UnitOfWork
 
 
 def add_device_room_mapping(
@@ -10,7 +10,7 @@ def add_device_room_mapping(
     room: str,
     start_ts: float,
     end_ts: Optional[float],
-    uow: SqlAlchemyUoW,
+    uow: UnitOfWork,
 ) -> None:
     with uow:
         uow.device_mapping_repo().add_mapping(
