@@ -1,10 +1,10 @@
 import json
 import logging
 
+import paho.mqtt.client as mqtt
 from air_quality_core.application import ingest_reading
 from air_quality_core.config.settings import settings
 from air_quality_core.domain.models import Reading
-import paho.mqtt.client as mqtt
 
 from air_quality_server.adapters.db.uow import SqlAlchemyUoW
 

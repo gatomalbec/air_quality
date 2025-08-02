@@ -312,6 +312,3 @@ def test_multiple_eviction_rounds(sqlite_conn: sqlite3.Connection) -> None:
         cursor = writer.conn.execute("SELECT COUNT(*) FROM readings")
         count = cursor.fetchone()[0]
         assert count < 10  # Some entries should have been evicted
-
-
-

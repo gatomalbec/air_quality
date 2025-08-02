@@ -14,7 +14,7 @@ class MockPayload(Serializable):
 
     def __init__(self, value: int):
         self.value = value
-        
+
     def to_string(self) -> str:
         return str(self.value)
 
