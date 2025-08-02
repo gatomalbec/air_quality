@@ -4,7 +4,7 @@ import logging
 from air_quality_core.application import ingest_reading
 from air_quality_core.config.settings import settings
 from air_quality_core.domain.models import Reading
-from paho.mqtt import client as mqtt
+import paho.mqtt.client as mqtt
 
 from air_quality_server.adapters.db.uow import SqlAlchemyUoW
 
@@ -36,7 +36,7 @@ def _on_message(_client, _userdata, msg):
 
 
 def main() -> None:
-    client = mqtt.Client(client_id=settings.MQTT_CLIENT_ID, clean_session=True)
+    client = mqtt.Client(client_id=settings.MQTT_CLIENT_ID, clean_session=True)  # type: ignore[operator]
     client.on_connect = _on_connect
     client.on_message = _on_message
     client.connect(settings.MQTT_BROKER, settings.MQTT_PORT, keepalive=60)
