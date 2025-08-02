@@ -1,9 +1,9 @@
 from dataclasses import dataclass
-from typing import Any, Generic, Protocol, TypeVar
+from typing import Generic, Protocol, TypeVar
 
 
 class Serializable(Protocol):
-    def to_dict(self) -> dict[str, Any]: ...
+    def to_string(self) -> str: ...
 
 
 T = TypeVar("T", bound=Serializable)

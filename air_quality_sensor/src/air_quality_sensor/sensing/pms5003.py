@@ -49,7 +49,6 @@ class PMS5003Reading:
     values for different particle sizes.
 
     Attributes:
-        ts: Timestamp of when the reading was taken (Unix timestamp).
         pm1_cf: PM1.0 concentration in μg/m³ (calibration factor).
         pm25_cf: PM2.5 concentration in μg/m³ (calibration factor).
         pm10_cf: PM10 concentration in μg/m³ (calibration factor).
@@ -58,7 +57,6 @@ class PMS5003Reading:
         pm10_atm: PM10 concentration in μg/m³ (atmospheric).
     """
 
-    ts: float
     pm1_cf: int
     pm25_cf: int
     pm10_cf: int
@@ -229,7 +227,6 @@ class PMS5003:
             frame[self.protocol.data_start_offset : self.protocol.data_end_offset],
         )
         reading = PMS5003Reading(
-            ts=time.time(),
             pm1_cf=w[0],
             pm25_cf=w[1],
             pm10_cf=w[2],
