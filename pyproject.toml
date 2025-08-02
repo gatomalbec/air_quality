@@ -37,6 +37,7 @@ mypy_path = "stubs"
 follow_imports = "normal"
 ignore_missing_imports = true
 exclude = ["stubs/"]
+check_untyped_defs = true
 
 [[tool.mypy.overrides]]
 module = "plotext.*"
@@ -44,6 +45,10 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = "stubs.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "paho.*"
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

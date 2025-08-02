@@ -63,7 +63,7 @@ def ingest_reading_endpoint(
     reading_in: ReadingIn,
     uow: SqlAlchemyUoW = Depends(get_uow),
 ):
-    reading = Reading(**reading_in.dict())
+    reading = Reading(**reading_in.model_dump())
     with uow:
         ingest_reading(reading, uow)
     return {"status": "ok"}

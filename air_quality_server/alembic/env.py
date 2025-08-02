@@ -3,9 +3,7 @@ from logging.config import fileConfig
 from pathlib import Path
 
 from air_quality_core.config.settings import settings
-from air_quality_server.adapters.db.sqlalchemy_models import (
-    Base,
-)
+from air_quality_server.adapters.db.sqlalchemy_models import Base
 from sqlalchemy import create_engine, pool
 
 from alembic import context
