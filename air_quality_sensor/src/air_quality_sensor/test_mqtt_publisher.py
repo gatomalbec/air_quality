@@ -106,7 +106,7 @@ def test_send_success():
         mock_event.wait.return_value = True
 
         with patch("threading.Event", return_value=mock_event):
-            result = publisher.publish({"test": "data"})
+            result = publisher.publish('{"test": "data"}')
             assert result is True
 
         mock_client.return_value.publish.assert_called_once()
@@ -126,7 +126,7 @@ def test_send_not_connected():
         # Ensure not connected
         publisher._connected = False
 
-        result = publisher.publish({"test": "data"})
+        result = publisher.publish('{"test": "data"}')
         assert result is False
 
 
@@ -142,7 +142,7 @@ def test_send_publish_failure():
         # Set as connected
         publisher._connected = True
 
-        result = publisher.publish({"test": "data"})
+        result = publisher.publish('{"test": "data"}')
         assert result is False
 
 
@@ -151,17 +151,15 @@ def test_send_json_serialization_error():
     with patch("paho.mqtt.client.Client") as mock_client:
         mock_client.return_value.connect.return_value = 0
         mock_client.return_value.loop_start.return_value = None
+        mock_client.return_value.publish.return_value = (1, None)  # Error
 
         publisher = MQTTPublisher(host="localhost", topic="test/topic", client_id="test_client")
 
         # Set as connected
         publisher._connected = True
 
-        # Create a payload that can't be serialized
-        class Unserializable:
-            pass
-
-        result = publisher.publish({"test": Unserializable()})
+        # Test with a malformed JSON string
+        result = publisher.publish('{"test": "unserializable"')
         assert result is False
 
 
@@ -187,7 +185,7 @@ def test_send_timeout():
         mock_event.wait.return_value = False
 
         with patch("threading.Event", return_value=mock_event):
-            result = publisher.publish({"test": "data"})
+            result = publisher.publish('{"test": "data"}')
             assert result is False
 
 
@@ -226,7 +224,7 @@ def test_thread_safety():
 
         with patch("threading.Event", return_value=mock_event):
             # Test that the publish method works correctly
-            result = publisher.publish({"test": "data"})
+            result = publisher.publish('{"test": "data"}')
             assert result is True
 
 

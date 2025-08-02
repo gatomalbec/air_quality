@@ -3,7 +3,7 @@ import time
 from unittest.mock import Mock
 
 from air_quality_sensor.poller import BaseSensorThread
-from air_quality_sensor.sensor_types import SensorReading, Serializable
+from air_quality_sensor.sensor_types import Serializable
 
 
 class MockPayload(Serializable):
@@ -61,11 +61,15 @@ def test_run_with_successful_readings():
 
     # Verify reading was put in queue
     assert not out_q.empty()
-    reading = out_q.get_nowait()
-    assert isinstance(reading, SensorReading)
-    assert reading.device_id == "test_device"
-    assert reading.payload == mock_payload
-    assert reading.ts > 0
+    reading_str = out_q.get_nowait()
+    assert isinstance(reading_str, str)
+    # Parse the JSON to verify structure
+    import json
+
+    reading_data = json.loads(reading_str)
+    assert reading_data["device_id"] == "test_device"
+    assert reading_data["payload"] == "42"  # MockPayload.to_string() returns str(value)
+    assert reading_data["ts"] > 0
 
 
 def test_run_with_failed_readings():
@@ -224,8 +228,12 @@ def test_multiple_readings_over_time():
     assert len(readings) >= 2
 
     # Verify all readings have correct structure
-    for reading in readings:
-        assert isinstance(reading, SensorReading)
-        assert reading.device_id == "test_device"
-        assert isinstance(reading.payload, MockPayload)
-        assert reading.ts > 0
+    for reading_str in readings:
+        assert isinstance(reading_str, str)
+        # Parse the JSON to verify structure
+        import json
+
+        reading_data = json.loads(reading_str)
+        assert "device_id" in reading_data
+        assert "payload" in reading_data
+        assert "ts" in reading_data

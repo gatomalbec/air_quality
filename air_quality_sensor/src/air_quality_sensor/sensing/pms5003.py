@@ -1,8 +1,11 @@
+import json
 import logging
 import struct
 import time
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Optional, Protocol
+
+import serial
 
 
 class SerialLike(Protocol):
@@ -28,16 +31,40 @@ class SerialLike(Protocol):
         """
         ...
 
-    def write(self, b: bytes) -> int:
+    def write(self, data: bytes) -> int | None:
         """Write bytes to the serial port.
 
         Args:
-            b: Bytes to write to the serial port.
+            data: Bytes to write to the serial port.
 
         Returns:
-            Number of bytes written.
+            Number of bytes written, or None if the operation failed.
         """
         ...
+
+
+def open_pm_port(
+    device: str = "/dev/ttyS0",  # Pi Zero UART mapped to GPIO14/GPIO15
+    baudrate: int = 9_600,
+    timeout: float = 1.0,
+) -> SerialLike:
+    """
+    Return a configured pySerial handle for the PMS5003.
+
+    • 8-N-1 framing, no hardware flow control.
+    • `timeout` defines the read‐blocking time in seconds.
+    • Caller owns closing the port.
+    """
+    ser = serial.Serial(
+        port=device,
+        baudrate=baudrate,
+        bytesize=serial.EIGHTBITS,
+        parity=serial.PARITY_NONE,
+        stopbits=serial.STOPBITS_ONE,
+        timeout=timeout,
+    )
+    ser.reset_input_buffer()
+    return ser
 
 
 @dataclass
@@ -63,6 +90,9 @@ class PMS5003Reading:
     pm1_atm: int
     pm25_atm: int
     pm10_atm: int
+
+    def to_string(self) -> str:
+        return json.dumps(asdict(self))
 
 
 @dataclass

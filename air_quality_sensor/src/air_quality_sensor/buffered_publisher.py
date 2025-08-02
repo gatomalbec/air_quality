@@ -1,7 +1,6 @@
 import logging
-from typing import Protocol, runtime_checkable
+from typing import Iterable, Protocol, Tuple, runtime_checkable
 
-from air_quality_sensor.sensor_types import Serializable
 from air_quality_sensor.sqlite_buffer import BufferWriter
 
 logger = logging.getLogger(__name__)
@@ -11,7 +10,8 @@ logger = logging.getLogger(__name__)
 class OutboundPort(Protocol):
     """Protocol for outbound message publishing."""
 
-    def publish(self, msg: Serializable) -> bool: ...
+    def publish(self, msg: str) -> bool: ...
+    def close(self) -> None: ...
 
 
 class BufferedPublisher(OutboundPort):
@@ -25,11 +25,18 @@ class BufferedPublisher(OutboundPort):
        If failed: message remains unsent for replay
     """
 
-    def __init__(self, buffer: BufferWriter, pusher: OutboundPort):
+    def __init__(self, buffer: BufferWriter, publisher: OutboundPort):
         self.buffer = buffer
-        self.pusher = pusher
+        self.publisher = publisher
 
-    def publish(self, msg: Serializable) -> bool:
+    def close(self) -> None:
+        self.buffer.close()
+        self.publisher.close()
+
+    def unsent(self) -> Iterable[Tuple[int, str]]:
+        return self.buffer.unsent()
+
+    def publish(self, msg: str) -> bool:
         """
         Publish a message with durability guarantees.
 
@@ -41,11 +48,10 @@ class BufferedPublisher(OutboundPort):
         """
         try:
             # Step 1: Persist to buffer
-            msg_str = msg.to_string()
-            row_id = self.buffer.append(msg_str)
+            row_id = self.buffer.append(msg)
 
             # Step 2: Attempt network publish
-            ok = self.pusher.publish(msg)
+            ok = self.publisher.publish(msg)
 
             # Step 3: Handle result
             if ok:

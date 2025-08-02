@@ -21,7 +21,7 @@ class MockSerializableMessage(Serializable):
 class MockBufferedPublisher(BufferedPublisher):
     def __init__(self, should_succeed: bool = True):
         self.should_succeed = should_succeed
-        self.sent_messages: list[Serializable] = []
+        self.sent_messages: list[str] = []
         # Create a minimal mock buffer and pusher for the parent class
         from air_quality_sensor.sqlite_buffer import BufferWriter
 
@@ -35,13 +35,19 @@ class MockBufferedPublisher(BufferedPublisher):
             def unsent(self) -> Iterator[Tuple[int, str]]:
                 return iter([])
 
+            def close(self) -> None:
+                pass
+
         class MockPusher:
-            def publish(self, msg: Serializable) -> bool:
+            def publish(self, msg: str) -> bool:
                 return should_succeed
+
+            def close(self) -> None:
+                pass
 
         super().__init__(MockBuffer(), MockPusher())
 
-    def publish(self, msg: Serializable) -> bool:
+    def publish(self, msg: str) -> bool:
         self.sent_messages.append(msg)
         return self.should_succeed
 
@@ -80,7 +86,7 @@ def mock_backoff() -> MockBackoffPolicy:
 
 
 @pytest.fixture
-def message_queue() -> queue.Queue[Serializable]:
+def message_queue() -> queue.Queue[str]:
     return queue.Queue()
 
 
@@ -115,28 +121,36 @@ def test_next_delay_failure():
 
 
 def test_stop(message_queue, mock_publisher_success, mock_backoff):
-    loop = DeliveryLoop(message_queue, mock_publisher_success, [], mock_backoff)
+    def make_publisher():
+        return mock_publisher_success
+
+    loop = DeliveryLoop(message_queue, make_publisher, mock_backoff)
     assert not loop._stop_event.is_set()
     loop.stop()
     assert loop._stop_event.is_set()
 
 
 def test_run_processes_backlog_first(message_queue, mock_publisher_success, mock_backoff):
-    backlog_message = MockSerializableMessage({"backlog": "item"})
     queue_message = MockSerializableMessage({"queue": "item"})
-    message_queue.put(queue_message)
-    loop = DeliveryLoop(message_queue, mock_publisher_success, [backlog_message], mock_backoff)
+    message_queue.put(queue_message.to_string())
+
+    def make_publisher():
+        return mock_publisher_success
+
+    loop = DeliveryLoop(message_queue, make_publisher, mock_backoff)
     loop.start()
     time.sleep(0.1)
     loop.stop()
     loop.join()
-    assert len(mock_publisher_success.sent_messages) == 2
-    assert mock_publisher_success.sent_messages[0] == backlog_message
-    assert mock_publisher_success.sent_messages[1] == queue_message
+    assert len(mock_publisher_success.sent_messages) == 1
+    assert mock_publisher_success.sent_messages[0] == queue_message.to_string()
 
 
 def test_run_handles_queue_empty(message_queue, mock_publisher_success, mock_backoff):
-    loop = DeliveryLoop(message_queue, mock_publisher_success, [], mock_backoff)
+    def make_publisher():
+        return mock_publisher_success
+
+    loop = DeliveryLoop(message_queue, make_publisher, mock_backoff)
     loop.start()
     time.sleep(0.1)
     loop.stop()
@@ -146,31 +160,44 @@ def test_run_handles_queue_empty(message_queue, mock_publisher_success, mock_bac
 
 def test_run_handles_publish_failure(message_queue, mock_publisher_failure, mock_backoff):
     message = MockSerializableMessage({"test": "data"})
-    loop = DeliveryLoop(message_queue, mock_publisher_failure, [message], mock_backoff)
+    message_queue.put(message.to_string())
+
+    def make_publisher():
+        return mock_publisher_failure
+
+    loop = DeliveryLoop(message_queue, make_publisher, mock_backoff)
     loop.start()
     time.sleep(0.1)
     loop.stop()
     loop.join()
-    assert len(loop._backlog) == 1
-    assert loop._backlog[0] == message
+    assert len(mock_publisher_failure.sent_messages) >= 1
 
 
 def test_run_with_successful_publish(message_queue, mock_publisher_success, mock_backoff):
     message = MockSerializableMessage({"test": "data"})
-    loop = DeliveryLoop(message_queue, mock_publisher_success, [message], mock_backoff)
+    message_queue.put(message.to_string())
+
+    def make_publisher():
+        return mock_publisher_success
+
+    loop = DeliveryLoop(message_queue, make_publisher, mock_backoff)
     loop.start()
     time.sleep(0.1)
     loop.stop()
     loop.join()
-    assert len(loop._backlog) == 0
     assert len(mock_publisher_success.sent_messages) == 1
-    assert mock_publisher_success.sent_messages[0] == message
+    assert mock_publisher_success.sent_messages[0] == message.to_string()
 
 
 def test_run_with_backoff_delay(message_queue, mock_publisher_failure):
     backoff = MockBackoffPolicy([0.1])
     message = MockSerializableMessage({"test": "data"})
-    loop = DeliveryLoop(message_queue, mock_publisher_failure, [message], backoff)
+    message_queue.put(message.to_string())
+
+    def make_publisher():
+        return mock_publisher_failure
+
+    loop = DeliveryLoop(message_queue, make_publisher, backoff)
     start_time = time.time()
     loop.start()
     time.sleep(0.2)
@@ -181,7 +208,10 @@ def test_run_with_backoff_delay(message_queue, mock_publisher_failure):
 
 
 def test_run_stops_when_signaled(message_queue, mock_publisher_success, mock_backoff):
-    loop = DeliveryLoop(message_queue, mock_publisher_success, [], mock_backoff)
+    def make_publisher():
+        return mock_publisher_success
+
+    loop = DeliveryLoop(message_queue, make_publisher, mock_backoff)
     loop.start()
     time.sleep(0.01)
     loop.stop()
@@ -196,25 +226,33 @@ def test_run_with_multiple_messages(message_queue, mock_publisher_success, mock_
         MockSerializableMessage({"id": 3}),
     ]
     for msg in messages:
-        message_queue.put(msg)
-    loop = DeliveryLoop(message_queue, mock_publisher_success, [], mock_backoff)
+        message_queue.put(msg.to_string())
+
+    def make_publisher():
+        return mock_publisher_success
+
+    loop = DeliveryLoop(message_queue, make_publisher, mock_backoff)
     loop.start()
     time.sleep(0.2)
     loop.stop()
     loop.join()
     assert len(mock_publisher_success.sent_messages) == 3
     for i, msg in enumerate(messages):
-        assert mock_publisher_success.sent_messages[i] == msg
+        assert mock_publisher_success.sent_messages[i] == msg.to_string()
 
 
 def test_run_with_mixed_success_failure(message_queue):
     publisher = MockBufferedPublisher(should_succeed=False)
     no_delay_backoff = MockBackoffPolicy([0.0, 0.0])
-    messages = [MockSerializableMessage({"id": 1})]
-    loop = DeliveryLoop(message_queue, publisher, messages, no_delay_backoff)
+    message = MockSerializableMessage({"id": 1})
+    message_queue.put(message.to_string())
+
+    def make_publisher():
+        return publisher
+
+    loop = DeliveryLoop(message_queue, make_publisher, no_delay_backoff)
     loop.start()
     time.sleep(0.1)
     loop.stop()
     loop.join()
     assert len(publisher.sent_messages) >= 1
-    assert len(loop._backlog) >= 1
