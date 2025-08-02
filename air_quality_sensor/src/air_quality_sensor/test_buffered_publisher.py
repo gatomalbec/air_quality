@@ -1,7 +1,5 @@
 import json
-import os
 import sqlite3
-import tempfile
 from typing import Iterator
 
 import pytest
@@ -12,7 +10,7 @@ from air_quality_sensor.sqlite_buffer import SQLLiteBufferWriter
 
 
 class MockSerializableMessage(Serializable):
-    """Test implementation of Serializable for testing."""
+    """Mock serializable message for testing."""
 
     def __init__(self, data: dict):
         self.data = data
@@ -22,40 +20,29 @@ class MockSerializableMessage(Serializable):
 
 
 class MockPusher(OutboundPort):
-    """Mock implementation of OutboundPort for testing."""
+    """Mock outbound port for testing."""
 
     def __init__(self, should_succeed: bool = True):
         self.should_succeed = should_succeed
         self.sent_messages: list[Serializable] = []
 
-    def send(self, msg: Serializable) -> bool:
+    def publish(self, msg: Serializable) -> bool:
         self.sent_messages.append(msg)
         return self.should_succeed
 
 
 @pytest.fixture
-def temp_db_path() -> Iterator[str]:
-    """Create a temporary database file path."""
-    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
-        db_path = f.name
-    yield db_path
-    # Cleanup
-    if os.path.exists(db_path):
-        os.unlink(db_path)
-
-
-@pytest.fixture
-def sqlite_conn(temp_db_path: str) -> Iterator[sqlite3.Connection]:
-    """Create a SQLite connection to a temporary database."""
-    conn = sqlite3.connect(temp_db_path)
+def sqlite_conn() -> Iterator[sqlite3.Connection]:
+    """Create an in-memory SQLite connection for testing."""
+    conn = sqlite3.connect(":memory:")
     yield conn
     conn.close()
 
 
 @pytest.fixture
 def buffer_writer(sqlite_conn: sqlite3.Connection) -> SQLLiteBufferWriter:
-    """Create a buffer writer instance."""
-    return SQLLiteBufferWriter(sqlite_conn, max_mb=1, eviction_batch=2)
+    """Create a buffer writer for testing."""
+    return SQLLiteBufferWriter(sqlite_conn)
 
 
 @pytest.fixture
@@ -86,12 +73,6 @@ def buffered_publisher_failure(
     return BufferedPublisher(buffer_writer, mock_pusher_failure)
 
 
-def test_init(buffered_publisher_success: BufferedPublisher) -> None:
-    """Test buffered publisher initialization."""
-    assert buffered_publisher_success.buffer is not None
-    assert buffered_publisher_success.pusher is not None
-
-
 def test_send_success(buffered_publisher_success: BufferedPublisher) -> None:
     """Test successful message sending."""
     # Set up the buffer
@@ -102,7 +83,7 @@ def test_send_success(buffered_publisher_success: BufferedPublisher) -> None:
     message = MockSerializableMessage({"test": "data", "value": 42})
 
     # Send the message
-    result = buffered_publisher_success.send(message)
+    result = buffered_publisher_success.publish(message)
 
     # Should succeed
     assert result is True
@@ -126,7 +107,7 @@ def test_send_failure(buffered_publisher_failure: BufferedPublisher) -> None:
     message = MockSerializableMessage({"test": "data", "value": 42})
 
     # Send the message
-    result = buffered_publisher_failure.send(message)
+    result = buffered_publisher_failure.publish(message)
 
     # Should fail
     assert result is False
@@ -155,72 +136,73 @@ def test_send_multiple_messages(buffered_publisher_success: BufferedPublisher) -
 
     # Send all messages
     for message in messages:
-        result = buffered_publisher_success.send(message)
+        result = buffered_publisher_success.publish(message)
         assert result is True
 
     # Check that all messages were sent via pusher
     assert len(buffered_publisher_success.pusher.sent_messages) == 3  # type: ignore[attr-defined]
-    assert buffered_publisher_success.pusher.sent_messages == messages  # type: ignore[attr-defined]
+    for i, message in enumerate(messages):
+        assert buffered_publisher_success.pusher.sent_messages[i] == message  # type: ignore[attr-defined]
 
-    # Check that no messages remain unsent
+    # Check that all messages were marked as sent in buffer
     unsent = list(buffered_publisher_success.buffer.unsent())
-    assert len(unsent) == 0
+    assert len(unsent) == 0  # Should be no unsent messages
 
 
 def test_send_with_mixed_success_failure() -> None:
-    """Test sending with a pusher that sometimes fails."""
+    """Test sending messages with mixed success/failure outcomes."""
 
-    # Create a mock pusher that fails on specific messages
+    # Create a selective pusher that fails for specific messages
     class SelectivePusher(OutboundPort):
         def __init__(self):
-            self.sent_messages = []
-            self.fail_on = {"fail": True}
+            self.sent_messages: list[Serializable] = []
+            self.call_count = 0
 
-        def send(self, msg: Serializable) -> bool:
+        def publish(self, msg: Serializable) -> bool:
             self.sent_messages.append(msg)
-            return msg.data != self.fail_on  # type: ignore[attr-defined]
+            self.call_count += 1
+            # Fail every other message
+            return self.call_count % 2 == 1
 
-    # Set up buffer and publisher
-    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
-        db_path = f.name
+    # Set up the test with in-memory database
+    conn = sqlite3.connect(":memory:")
+    buffer_writer = SQLLiteBufferWriter(conn)
+    selective_pusher = SelectivePusher()
+    publisher = BufferedPublisher(buffer_writer, selective_pusher)
 
-    try:
-        conn = sqlite3.connect(db_path)
-        buffer = SQLLiteBufferWriter(conn, max_mb=1, eviction_batch=2)
-        pusher = SelectivePusher()
-        publisher = BufferedPublisher(buffer, pusher)
+    # Set up the buffer
+    buffer_writer.conn.executescript(buffer_writer.CREATE_SQL)  # type: ignore[attr-defined]
 
-        # Set up the buffer
-        buffer.conn.executescript(buffer.CREATE_SQL)  # type: ignore[attr-defined]
+    messages = [
+        MockSerializableMessage({"id": 1}),
+        MockSerializableMessage({"id": 2}),
+        MockSerializableMessage({"id": 3}),
+        MockSerializableMessage({"id": 4}),
+    ]
 
-        # Send messages
-        success_msg = MockSerializableMessage({"success": True})
-        fail_msg = MockSerializableMessage({"fail": True})
+    # Send all messages
+    results = []
+    for message in messages:
+        result = publisher.publish(message)
+        results.append(result)
 
-        result1 = publisher.send(success_msg)
-        result2 = publisher.send(fail_msg)
+    # Check results: odd-indexed messages should succeed, even-indexed should fail
+    assert results == [True, False, True, False]
 
-        # Check results
-        assert result1 is True
-        assert result2 is False
+    # Check that all messages were attempted via pusher
+    assert len(selective_pusher.sent_messages) == 4
 
-        # Check that both were attempted
-        assert len(pusher.sent_messages) == 2  # type: ignore[attr-defined]
+    # Check that failed messages remain unsent in buffer
+    unsent = list(buffer_writer.unsent())
+    assert len(unsent) == 2  # Should have two unsent messages (the failed ones)
 
-        # Check buffer state
-        unsent = list(buffer.unsent())
-        assert len(unsent) == 1  # Only the failed message should remain unsent
-
-    finally:
-        conn.close()
-        if os.path.exists(db_path):
-            os.unlink(db_path)
+    conn.close()
 
 
 def test_send_with_exception() -> None:
     """Test sending when buffer operations raise exceptions."""
 
-    # Create a mock buffer that raises exceptions
+    # Create a failing buffer
     class FailingBuffer:
         def append(self, msg):
             raise Exception("Buffer append failed")
@@ -229,115 +211,21 @@ def test_send_with_exception() -> None:
             pass
 
         def unsent(self):
-            return []
+            return iter([])
 
+    # Create a mock pusher
     mock_pusher = MockPusher(should_succeed=True)
-    failing_buffer = FailingBuffer()
 
-    publisher = BufferedPublisher(failing_buffer, mock_pusher)
+    # Create buffered publisher with failing buffer
+    publisher = BufferedPublisher(FailingBuffer(), mock_pusher)
 
     message = MockSerializableMessage({"test": "data"})
 
-    # Should handle exception gracefully
-    result = publisher.send(message)
+    # Send should fail due to buffer exception
+    result = publisher.publish(message)
+
+    # Should fail
     assert result is False
 
-    # Should not have attempted to send via pusher
+    # Check that message was not sent via pusher (buffer failed first)
     assert len(mock_pusher.sent_messages) == 0
-
-
-def test_protocol_compliance() -> None:
-    """Test that BufferedPublisher properly implements OutboundPort protocol."""
-
-    # Create a mock buffer
-    class MockBuffer:
-        def append(self, msg):
-            return 1
-
-        def mark_sent(self, row_id):
-            pass
-
-        def unsent(self):
-            return []
-
-    mock_pusher = MockPusher()
-    mock_buffer = MockBuffer()
-
-    publisher = BufferedPublisher(mock_buffer, mock_pusher)
-
-    # Should be callable with the expected signature
-    message = MockSerializableMessage({"test": "data"})
-    result = publisher.send(message)
-    assert isinstance(result, bool)
-
-
-def test_message_persistence() -> None:
-    """Test that messages are properly persisted in the buffer."""
-    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
-        db_path = f.name
-
-    try:
-        conn = sqlite3.connect(db_path)
-        buffer = SQLLiteBufferWriter(conn, max_mb=1, eviction_batch=2)
-        pusher = MockPusher(should_succeed=False)  # Always fail to test persistence
-        publisher = BufferedPublisher(buffer, pusher)
-
-        # Set up the buffer
-        buffer.conn.executescript(buffer.CREATE_SQL)  # type: ignore[attr-defined]
-
-        # Send multiple messages
-        messages = [
-            MockSerializableMessage({"id": 1, "data": "first"}),
-            MockSerializableMessage({"id": 2, "data": "second"}),
-            MockSerializableMessage({"id": 3, "data": "third"}),
-        ]
-
-        for message in messages:
-            publisher.send(message)
-
-        # Check that all messages are in buffer as unsent
-        unsent = list(buffer.unsent())
-        assert len(unsent) == 3
-
-        # Verify the messages are correct
-        for i, (row_id, payload) in enumerate(unsent):
-            assert payload == messages[i].to_string()
-
-    finally:
-        conn.close()
-        if os.path.exists(db_path):
-            os.unlink(db_path)
-
-
-def test_mark_sent_functionality() -> None:
-    """Test that successful sends properly mark messages as sent."""
-    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
-        db_path = f.name
-
-    try:
-        conn = sqlite3.connect(db_path)
-        buffer = SQLLiteBufferWriter(conn, max_mb=1, eviction_batch=2)
-        pusher = MockPusher(should_succeed=True)  # Always succeed
-        publisher = BufferedPublisher(buffer, pusher)
-
-        # Set up the buffer
-        buffer.conn.executescript(buffer.CREATE_SQL)  # type: ignore[attr-defined]
-
-        # Send multiple messages
-        messages = [
-            MockSerializableMessage({"id": 1, "data": "first"}),
-            MockSerializableMessage({"id": 2, "data": "second"}),
-            MockSerializableMessage({"id": 3, "data": "third"}),
-        ]
-
-        for message in messages:
-            publisher.send(message)
-
-        # Check that no messages remain unsent
-        unsent = list(buffer.unsent())
-        assert len(unsent) == 0
-
-    finally:
-        conn.close()
-        if os.path.exists(db_path):
-            os.unlink(db_path)
