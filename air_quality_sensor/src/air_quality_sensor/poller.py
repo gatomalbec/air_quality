@@ -15,7 +15,7 @@ class BaseSensorThread(threading.Thread):
         interval_s: float,
         device_id: str,
         driver: Callable[[], Serializable | None],
-        out_q: queue.Queue[SensorReading],
+        out_q: queue.Queue[str],
     ):
         super().__init__(name=name)
         self.interval_s = interval_s
@@ -41,10 +41,10 @@ class BaseSensorThread(threading.Thread):
                             payload=payload,
                         )
                         try:
-                            self.out_q.put_nowait(reading)
+                            self.out_q.put_nowait(reading.to_string())
                         except queue.Full:
                             self.out_q.get_nowait()
-                            self.out_q.put_nowait(reading)
+                            self.out_q.put_nowait(reading.to_string())
                 except Exception:
                     pass
                 next_tick += self.interval_s

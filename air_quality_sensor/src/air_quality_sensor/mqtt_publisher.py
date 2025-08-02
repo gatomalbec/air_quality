@@ -1,7 +1,6 @@
-import json
 import logging
 import threading
-from typing import Any, Dict, Optional, Protocol
+from typing import Dict, Optional, Protocol
 
 import paho.mqtt.client as paho
 
@@ -9,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 class OutboundPublisher(Protocol):
-    def publish(self, payload: Dict[str, Any]) -> bool: ...
+    def publish(self, payload: str) -> bool: ...
 
 
 class MQTTPublisher(OutboundPublisher):
@@ -109,24 +108,14 @@ class MQTTPublisher(OutboundPublisher):
         self._disconnected_rc = rc
         logger.warning("Disconnected from MQTT broker, return code: %s", rc)
 
-    def publish(self, payload: Dict[str, Any]) -> bool:
+    def publish(self, payload: str) -> bool:
         """Send a payload to the MQTT topic."""
         if not self._connected:
             logger.warning("Not connected to MQTT broker, cannot send payload")
             return False
 
-        try:
-            payload_json = json.dumps(payload)
-            logger.debug(
-                "Sending payload: %s",
-                payload_json[:100] + "..." if len(payload_json) > 100 else payload_json,
-            )
-        except (TypeError, ValueError) as e:
-            logger.error("Failed to serialize payload: %s", e)
-            return False
-
         with self._lock:
-            result, mid = self._client.publish(self.topic, payload_json, qos=1, retain=False)
+            result, mid = self._client.publish(self.topic, payload, qos=1, retain=False)
             if result != paho.MQTT_ERR_SUCCESS:
                 logger.error("Failed to publish message, error code: %s", result)
                 return False

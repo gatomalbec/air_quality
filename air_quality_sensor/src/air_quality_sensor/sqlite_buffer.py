@@ -11,6 +11,7 @@ class BufferWriter(Protocol):
     def append(self, data: str) -> int: ...
     def mark_sent(self, row_id: int) -> None: ...
     def unsent(self) -> Iterable[Tuple[int, str]]: ...
+    def close(self) -> None: ...
 
 
 class SQLLiteBufferWriter(BufferWriter):
@@ -177,3 +178,6 @@ class SQLLiteBufferWriter(BufferWriter):
 
         logger.info("Buffer stats: %s", stats)
         return stats
+
+    def close(self) -> None:
+        self.conn.close()

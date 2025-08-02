@@ -3,10 +3,9 @@ import queue
 import random
 import threading
 from collections import deque
-from typing import Iterable, Protocol, runtime_checkable
+from typing import Callable, Protocol, runtime_checkable
 
 from air_quality_sensor.buffered_publisher import BufferedPublisher
-from air_quality_sensor.sensor_types import Serializable
 
 logger = logging.getLogger(__name__)
 
@@ -44,18 +43,17 @@ class DeliveryLoop(threading.Thread):
 
     def __init__(
         self,
-        q: queue.Queue[Serializable],
-        outbound: BufferedPublisher,
-        backlog: Iterable[Serializable],
+        q: queue.Queue[str],
+        make_outbound_port: Callable[[], BufferedPublisher],
         backoff: BackoffPolicy,
     ):
         super().__init__(name="delivery-loop")
         self._q = q
-        self._out = outbound
-        self._backlog = deque(backlog)
+        self._make_outbound_port = make_outbound_port
+        self._out: BufferedPublisher | None = None  # lazy init
+        self._backlog: deque[str] | None = None
         self._backoff = backoff
         self._stop_event = threading.Event()
-        logger.info("DeliveryLoop initialized with %d backlog items", len(self._backlog))
 
     def stop(self) -> None:
         """Signal the delivery loop to stop."""
@@ -66,31 +64,37 @@ class DeliveryLoop(threading.Thread):
         """Main delivery loop that processes messages from queue and backlog."""
         logger.info("Starting delivery loop")
 
-        while not self._stop_event.is_set():
-            # Get next message from backlog or queue
-            if self._backlog:
-                msg = self._backlog.popleft()
-                logger.debug("Processing message from backlog")
-            else:
-                try:
-                    msg = self._q.get(timeout=1)
-                    logger.debug("Processing message from queue")
-                except queue.Empty:
-                    continue
+        self._out = self._make_outbound_port()
+        # Convert (id, str) tuples to just the string part for the backlog
+        self._backlog = deque(msg for _, msg in self._out.unsent())
 
-            # Attempt to publish the message
-            logger.debug("Attempting to publish message")
-            ok = self._out.publish(msg)
+        try:
+            while not self._stop_event.is_set():
+                # Get next message from backlog or queue
+                if self._backlog:
+                    msg = self._backlog.popleft()
+                    logger.debug("Processing message from backlog")
+                else:
+                    try:
+                        msg = self._q.get(timeout=1)
+                        logger.debug("Processing message from queue")
+                    except queue.Empty:
+                        continue
 
-            if not ok:
-                logger.warning("Failed to publish message, adding to backlog for retry")
-                self._backlog.appendleft(msg)
-                delay = self._backoff.next_delay(success=False)
-                if delay:
-                    logger.debug("Waiting %.2f seconds before retry", delay)
-                    self._stop_event.wait(delay)
-            else:
-                logger.debug("Successfully published message")
-                self._backoff.next_delay(success=True)
+                # Attempt to publish the message
+                logger.debug("Attempting to publish message")
+                ok = self._out.publish(msg)
 
-        logger.info("Delivery loop stopped")
+                if not ok:
+                    logger.warning("Failed to publish message, adding to backlog for retry")
+                    self._backlog.appendleft(msg)
+                    delay = self._backoff.next_delay(success=False)
+                    if delay:
+                        logger.debug("Waiting %.2f seconds before retry", delay)
+                        self._stop_event.wait(delay)
+                else:
+                    logger.debug("Successfully published message")
+                    self._backoff.next_delay(success=True)
+        finally:
+            self._out.close()
+            logger.info("Delivery loop stopped")

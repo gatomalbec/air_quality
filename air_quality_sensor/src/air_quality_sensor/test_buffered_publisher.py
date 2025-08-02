@@ -24,11 +24,14 @@ class MockPusher(OutboundPort):
 
     def __init__(self, should_succeed: bool = True):
         self.should_succeed = should_succeed
-        self.sent_messages: list[Serializable] = []
+        self.sent_messages: list[str] = []
 
-    def publish(self, msg: Serializable) -> bool:
+    def publish(self, msg: str) -> bool:
         self.sent_messages.append(msg)
         return self.should_succeed
+
+    def close(self) -> None:
+        pass
 
 
 @pytest.fixture
@@ -83,14 +86,14 @@ def test_send_success(buffered_publisher_success: BufferedPublisher) -> None:
     message = MockSerializableMessage({"test": "data", "value": 42})
 
     # Send the message
-    result = buffered_publisher_success.publish(message)
+    result = buffered_publisher_success.publish(message.to_string())
 
     # Should succeed
     assert result is True
 
     # Check that message was sent via pusher
-    assert len(buffered_publisher_success.pusher.sent_messages) == 1  # type: ignore[attr-defined]
-    assert buffered_publisher_success.pusher.sent_messages[0] == message  # type: ignore[attr-defined]
+    assert len(buffered_publisher_success.publisher.sent_messages) == 1  # type: ignore[attr-defined]
+    assert buffered_publisher_success.publisher.sent_messages[0] == message.to_string()  # type: ignore[attr-defined]
 
     # Check that message was marked as sent in buffer
     unsent = list(buffered_publisher_success.buffer.unsent())
@@ -107,14 +110,14 @@ def test_send_failure(buffered_publisher_failure: BufferedPublisher) -> None:
     message = MockSerializableMessage({"test": "data", "value": 42})
 
     # Send the message
-    result = buffered_publisher_failure.publish(message)
+    result = buffered_publisher_failure.publish(message.to_string())
 
     # Should fail
     assert result is False
 
     # Check that message was attempted via pusher
-    assert len(buffered_publisher_failure.pusher.sent_messages) == 1  # type: ignore[attr-defined]
-    assert buffered_publisher_failure.pusher.sent_messages[0] == message  # type: ignore[attr-defined]
+    assert len(buffered_publisher_failure.publisher.sent_messages) == 1  # type: ignore[attr-defined]
+    assert buffered_publisher_failure.publisher.sent_messages[0] == message.to_string()  # type: ignore[attr-defined]
 
     # Check that message remains unsent in buffer
     unsent = list(buffered_publisher_failure.buffer.unsent())
@@ -136,13 +139,13 @@ def test_send_multiple_messages(buffered_publisher_success: BufferedPublisher) -
 
     # Send all messages
     for message in messages:
-        result = buffered_publisher_success.publish(message)
+        result = buffered_publisher_success.publish(message.to_string())
         assert result is True
 
     # Check that all messages were sent via pusher
-    assert len(buffered_publisher_success.pusher.sent_messages) == 3  # type: ignore[attr-defined]
+    assert len(buffered_publisher_success.publisher.sent_messages) == 3  # type: ignore[attr-defined]
     for i, message in enumerate(messages):
-        assert buffered_publisher_success.pusher.sent_messages[i] == message  # type: ignore[attr-defined]
+        assert buffered_publisher_success.publisher.sent_messages[i] == message.to_string()  # type: ignore[attr-defined]
 
     # Check that all messages were marked as sent in buffer
     unsent = list(buffered_publisher_success.buffer.unsent())
@@ -155,14 +158,17 @@ def test_send_with_mixed_success_failure() -> None:
     # Create a selective pusher that fails for specific messages
     class SelectivePusher(OutboundPort):
         def __init__(self):
-            self.sent_messages: list[Serializable] = []
+            self.sent_messages: list[str] = []
             self.call_count = 0
 
-        def publish(self, msg: Serializable) -> bool:
+        def publish(self, msg: str) -> bool:
             self.sent_messages.append(msg)
             self.call_count += 1
             # Fail every other message
             return self.call_count % 2 == 1
+
+        def close(self) -> None:
+            pass
 
     # Set up the test with in-memory database
     conn = sqlite3.connect(":memory:")
@@ -183,7 +189,7 @@ def test_send_with_mixed_success_failure() -> None:
     # Send all messages
     results = []
     for message in messages:
-        result = publisher.publish(message)
+        result = publisher.publish(message.to_string())
         results.append(result)
 
     # Check results: odd-indexed messages should succeed, even-indexed should fail
@@ -213,6 +219,9 @@ def test_send_with_exception() -> None:
         def unsent(self):
             return iter([])
 
+        def close(self) -> None:
+            pass
+
     # Create a mock pusher
     mock_pusher = MockPusher(should_succeed=True)
 
@@ -222,7 +231,7 @@ def test_send_with_exception() -> None:
     message = MockSerializableMessage({"test": "data"})
 
     # Send should fail due to buffer exception
-    result = publisher.publish(message)
+    result = publisher.publish(message.to_string())
 
     # Should fail
     assert result is False
