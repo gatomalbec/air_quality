@@ -33,8 +33,6 @@ class MockPusher(OutboundPort):
         return self.should_succeed
 
 
-
-
 @pytest.fixture
 def temp_db_path() -> Iterator[str]:
     """Create a temporary database file path."""
@@ -246,9 +244,6 @@ def test_send_with_exception() -> None:
 
     # Should not have attempted to send via pusher
     assert len(mock_pusher.sent_messages) == 0
-
-
-
 
 
 def test_protocol_compliance() -> None:

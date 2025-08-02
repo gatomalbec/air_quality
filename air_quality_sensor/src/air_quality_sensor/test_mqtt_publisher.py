@@ -230,9 +230,6 @@ def test_thread_safety():
             assert result is True
 
 
-
-
-
 def test_connection_retry_logic():
     """Test connection retry logic with exponential backoff."""
     with patch("paho.mqtt.client.Client") as mock_client:
@@ -250,6 +247,3 @@ def test_connection_retry_logic():
 
         # Should eventually connect
         # Note: We can't easily test this without more complex mocking
-
-
-
