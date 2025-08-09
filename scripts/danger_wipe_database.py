@@ -18,7 +18,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
 
 # project settings – adjust import path if yours differs
-from air_quality_core.config.settings import settings
+from air_quality_core.config.environments import get_settings
 
 
 def drop_everything(url: str) -> None:
@@ -73,6 +73,8 @@ def main() -> None:
         help="skip confirmation prompt (use in CI / non‑interactive runs)",
     )
     args = parser.parse_args()
+
+    settings = get_settings()
 
     if not args.force:
         msg = (

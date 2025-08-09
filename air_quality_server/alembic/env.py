@@ -2,7 +2,7 @@ import sys
 from logging.config import fileConfig
 from pathlib import Path
 
-from air_quality_core.config.settings import settings
+from air_quality_core.config.environments import get_settings
 from air_quality_server.adapters.db.sqlalchemy_models import Base
 from sqlalchemy import create_engine, pool
 
@@ -18,13 +18,8 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata  # for ‑‑autogenerate
 
 
-def get_url() -> str:
-    """Return the SQLAlchemy‑compatible DB URL from project settings."""
-    return settings.DATABASE_URL
-
-
 def run_migrations_offline() -> None:
-    url = get_url()
+    url = get_settings().DATABASE_URL
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -37,7 +32,7 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     connectable = create_engine(
-        get_url(),
+        get_settings().DATABASE_URL,
         poolclass=pool.NullPool,
         future=True,
     )
