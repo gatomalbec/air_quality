@@ -13,8 +13,11 @@ air_quality_server  = { path = "air_quality_server", develop = true }
 air_quality_sensor  = { path = "air_quality_sensor", develop = true }
 
 [tool.poetry.scripts]
-air-quality-api   = "scripts.run_api:main"
-air-quality-producer = "scripts.producer:main"
+air-quality-api = "air_quality_server.__main__:main"
+air-quality-sensor = "air_quality_sensor.__main__:main"
+air-quality-server = "air_quality_server.__main__:main"
+air-quality-setup-db = "air_quality_server.__main__:main"
+
 air-quality-plot = "scripts.plot_readings:main"
 air-quality-generate-data = "scripts.generate_fake_data:main"
 air-quality-wipe-db = "scripts.danger_wipe_database:main"

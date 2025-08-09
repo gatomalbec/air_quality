@@ -53,6 +53,10 @@ class SQLLiteBufferWriter(BufferWriter):
         # usable_MB = 32  - (WAL + schema ≈ 0.5 MB) ≈ 31.5 MB
         # hours backup     = usable_MB / 0.06 MB·h⁻¹
 
+        # Initialize database schema
+        self.conn.executescript(self.CREATE_SQL)
+        self.conn.commit()
+
         logger.info(
             "Initialized SQLLiteBufferWriter with max_mb=%s, eviction_batch=%s",
             max_mb,
